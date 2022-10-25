@@ -3,9 +3,7 @@ from ldm.util import instantiate_from_config
 import torch
 import os
 # todo ?
-from google.colab import files
 from IPython.display import Image as ipyimg
-import ipywidgets as widgets
 from PIL import Image
 from numpy import asarray
 from einops import rearrange, repeat
@@ -23,14 +21,15 @@ def download_models(mode):
         url_conf = 'https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1'
         url_ckpt = 'https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1'
 
-        path_conf = 'logs/diffusion/superresolution_bsr/configs/project.yaml'
-        path_ckpt = 'logs/diffusion/superresolution_bsr/checkpoints/last.ckpt'
+        path_conf = os.sep.join('logs/diffusion/superresolution_bsr/configs/project.yaml'.split('/'))
+        path_ckpt = os.sep.join('logs/diffusion/superresolution_bsr/checkpoints/last.ckpt'.split('/'))
 
-        download_url(url_conf, path_conf)
-        download_url(url_ckpt, path_ckpt)
+        download_url(url_conf, path_conf, 'dl=1')
+        download_url(url_ckpt, path_ckpt, 'dl=1')
 
-        path_conf = path_conf + '/?dl=1' # fix it
-        path_ckpt = path_ckpt + '/?dl=1' # fix it
+        path_conf = os.path.join(path_conf, 'dl=1') # fix it
+        path_ckpt = os.path.join(path_ckpt, 'dl=1') # fix it
+        
         return path_conf, path_ckpt
 
     else:
@@ -56,32 +55,6 @@ def get_model(mode):
     return model
 
 
-def get_custom_cond(mode):
-    dest = "data/example_conditioning"
-
-    if mode == "superresolution":
-        uploaded_img = files.upload()
-        filename = next(iter(uploaded_img))
-        name, filetype = filename.split(".") # todo assumes just one dot in name !
-        os.rename(f"{filename}", f"{dest}/{mode}/custom_{name}.{filetype}")
-
-    elif mode == "text_conditional":
-        w = widgets.Text(value='A cake with cream!', disabled=True)
-        display(w)
-
-        with open(f"{dest}/{mode}/custom_{w.value[:20]}.txt", 'w') as f:
-            f.write(w.value)
-
-    elif mode == "class_conditional":
-        w = widgets.IntSlider(min=0, max=1000)
-        display(w)
-        with open(f"{dest}/{mode}/custom.txt", 'w') as f:
-            f.write(w.value)
-
-    else:
-        raise NotImplementedError(f"cond not implemented for mode{mode}")
-
-
 def get_cond_options(mode):
     path = "data/example_conditioning"
     path = os.path.join(path, mode)
@@ -94,12 +67,8 @@ def select_cond_path(mode):
     path = os.path.join(path, mode)
     onlyfiles = [f for f in sorted(os.listdir(path))]
 
-    selected = widgets.RadioButtons(
-        options=onlyfiles,
-        description='Select conditioning:',
-        disabled=False
-    )
-    display(selected)
+    selected = onlyfiles[0]
+    #display(selected)
     selected_path = os.path.join(path, selected.value)
     return selected_path
 
@@ -125,7 +94,8 @@ def get_cond(mode, selected_path):
 
 
 def visualize_cond_img(path):
-    display(ipyimg(filename=path))
+    #display(ipyimg(filename=path))
+    pass
 
 
 def run(model, selected_path, task, custom_steps, resize_enabled=False, classifier_ckpt=None, global_step=None):
