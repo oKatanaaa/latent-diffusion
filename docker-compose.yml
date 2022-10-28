@@ -3,6 +3,6 @@ services:
   ldm:
     image: ldm
     volumes:
-      - X:/University/MastersDegree/DeepLearning/data:/mnt
+      - null # insert path to your data here
     stdin_open: true # docker run -i
     tty: true        # docker run -t
