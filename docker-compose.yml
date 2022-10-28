@@ -1,0 +1,8 @@
+version: "3.9"
+services:
+  ldm:
+    image: ldm
+    volumes:
+      - X:/University/MastersDegree/DeepLearning/data:/mnt
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t

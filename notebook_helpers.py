@@ -45,7 +45,7 @@ def load_model_from_config(config, ckpt):
     m, u = model.load_state_dict(sd, strict=False)
     model.cuda()
     model.eval()
-    return {"model": model}, global_step
+    return model, global_step
 
 
 def get_model(mode):
@@ -77,8 +77,6 @@ def get_cond(mode, selected_path):
     example = dict()
     if mode == "superresolution":
         up_f = 4
-        visualize_cond_img(selected_path)
-
         c = Image.open(selected_path)
         c = torch.unsqueeze(torchvision.transforms.ToTensor()(c), 0)
         c_up = torchvision.transforms.functional.resize(c, size=[up_f * c.shape[2], up_f * c.shape[3]], antialias=True)
@@ -87,20 +85,50 @@ def get_cond(mode, selected_path):
         c = 2. * c - 1.
 
         c = c.to(torch.device("cuda"))
-        example["LR_image"] = c
+        example["LR_image"] = c  # low resolution image
         example["image"] = c_up
 
     return example
 
 
-def visualize_cond_img(path):
-    #display(ipyimg(filename=path))
-    pass
+def get_cond_for_psnr_testing(mode, selected_path):
+    """
+    Used for loading a large image for psnr testing. Downsamples it by a factor of 4x.
+    """
+    example = dict()
+    if mode == "superresolution":
+        down_f = 4
+        
+        c = Image.open(selected_path)
+        c = torch.unsqueeze(torchvision.transforms.ToTensor()(c), 0)
+        
+        h, w = c.shape[2], c.shape[3]
+        new_h, new_w = (h // down_f) * down_f, (w // down_f) * down_f, 
+        
+        c_orig = torchvision.transforms.functional.resize(c, size=[new_h, new_w], antialias=True)
+        c_down = torchvision.transforms.functional.resize(c, size=[new_h // down_f, new_w // down_f], antialias=True)
+        c_up = torchvision.transforms.functional.resize(c_down, size=[new_h, new_w], antialias=True)
+        c_up = rearrange(c_up, '1 c h w -> 1 h w c')
+        c_down = rearrange(c_down, '1 c h w -> 1 h w c')
+        c_orig = rearrange(c_orig, '1 c h w -> 1 h w c')
+        c = rearrange(c, '1 c h w -> 1 h w c')
+        c_down = 2. * c_down - 1.
+
+        c_down = c_down.to(torch.device("cuda"))
+        example["LR_image"] = c_down  # low resolution image
+        example["image"] = c_up
+        example["orig"] = c_orig
+
+    return example
 
 
-def run(model, selected_path, task, custom_steps, resize_enabled=False, classifier_ckpt=None, global_step=None):
+def run(model, example, task, custom_steps, resize_enabled=False, classifier_ckpt=None, global_step=None):
 
-    example = get_cond(task, selected_path)
+    if isinstance(example, str):
+        example = get_cond(task, example)
+    else:
+        assert isinstance(example, dict) and 'image' in example.keys() and 'LR_image' in example.keys(), \
+            'Example is not in proper format. Expected dict or path to the image.'
 
     save_intermediate_vid = False
     n_runs = 1
