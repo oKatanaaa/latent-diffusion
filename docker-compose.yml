@@ -1,8 +1,16 @@
+# doesn't work for some reason on windows (gpus are not available)
+
 version: "3.9"
 services:
   ldm:
+    build: .
     image: ldm
     volumes:
       - null # insert path to your data here
     stdin_open: true # docker run -i
     tty: true        # docker run -t
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
