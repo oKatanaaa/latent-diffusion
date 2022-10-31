@@ -35,6 +35,12 @@ Run the following:
 
 The environment is setup and ready to use.
 
+#### Linux bash
+
+You will need to `init conda`:
+1. `conda init bash`
+2. `conda activate ldm`
+
 ## Precautions
 
 This repository was tested on RTX 2060 with CUDA 11.6. Depending on your CUDA version, you may want to change `environment.yml` a bit (cudatoolkit version).
