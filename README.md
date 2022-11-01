@@ -2,7 +2,7 @@
 
 This fork contains fixed dependencies as well as ready-to-use docker file. The repository was adapted so that it can work on both Linux and Windows machines.
 
-A jupyter notebook has been included with an example of running a super-resolution model.
+A jupyter notebook (`testy.ipynb`) has been included with an example of running a super-resolution model.
 
 For the project documentation please check the original repo.
 
