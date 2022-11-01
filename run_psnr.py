@@ -1,13 +1,15 @@
+from cgi import test
 import os
-from argparse import ArgumentParser
 from glob import glob
-
-import numpy as np
+from skimage.color import rgb2gray
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import torch
+import numpy as np
 from PIL import Image
-from skimage.metrics import peak_signal_noise_ratio
+from argparse import ArgumentParser
 
-from notebook_helpers import get_cond_for_psnr_testing, get_model, run
+from notebook_helpers import get_model, run, get_cond_for_psnr_testing
+
 
 DIFFUSION_STEPS = 100
 
@@ -27,35 +29,48 @@ def extract_orig(example):
     return (orig_image * 255).astype(np.uint8)
 
 
+
+def preprocess(im_pair):
+    # Related to how the model processes large images.
+    # There will be black borders (correspond to edge patches with dims < 256px)
+    assert im_pair[0].shape == im_pair[1].shape
+    new_h = (im_pair[0].shape[0] // 256) * 256
+    new_w = (im_pair[0].shape[1] // 256) * 256
+    return im_pair[0][:new_h, :new_w], im_pair[1][:new_h, :new_w]
+
+
 def estimate_psnr(image_filenames, model, diff_steps, save_path=None):
     psnr_vals = []
+    ssim_vals = []
     for image_file in image_filenames:
         example = get_cond_for_psnr_testing('superresolution', image_file)
         logs = run(model, example, 'superresolution', diff_steps)
         
         orig_image = extract_orig(example)
         test_image = extract_sample(logs)
-        #return example, orig_image, test_image
+        orig_image, test_image = preprocess((orig_image, test_image))
         psnr = peak_signal_noise_ratio(orig_image, test_image)
+        ssim = structural_similarity(orig_image, test_image, channel_axis=2)
         psnr_vals.append(psnr)
+        ssim_vals.append(ssim)
         
-        print(f'PSNR: {psnr:.2f}, im_path: {image_file}')
+        print(f'PSNR: {psnr:.2f}, SSIM: {ssim:.2f}, im_path: {image_file}')
         if save_path is not None:
             image_name = image_file.split(os.sep)[-1]
             savepath = os.path.join(save_path, image_name)
             test_image = Image.fromarray(test_image)
             test_image.save(savepath)
-    return np.mean(psnr_vals)
+    return np.mean(psnr_vals), np.mean(ssim_vals)
 
 
 def main(dataset_path, save_path):
     model = get_model('superresolution')
     image_filenames = glob(os.path.join(dataset_path, '*'))
-    psnr = estimate_psnr(image_filenames, model, DIFFUSION_STEPS, save_path)
-    print(f'Computed mean psnr: {psnr:.2f}')
+    psnr, ssim = estimate_psnr(image_filenames, model, DIFFUSION_STEPS, save_path)
+    print(f'Metrics: mean psnr={psnr:.2f}, mean ssim={ssim:.2f}')
     
     with open(os.path.join(save_path, 'psnr.txt'), 'w') as f:
-        f.write(f'Computed mean psnr: {psnr:.2f}')
+        f.write(f'Metrics: mean psnr={psnr:.2f}, mean ssim={ssim:.2f}')
 
 
 if __name__ == '__main__':
